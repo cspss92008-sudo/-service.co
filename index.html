@@ -95,6 +95,23 @@ button.b:disabled{opacity:.5;cursor:default}
 .slip .foot{font-size:11.5px;color:#444;margin-top:12px;font-family:var(--sans);line-height:1.6}
 .slip .muted{color:#666;font-size:12px}
 .offscreen{position:fixed;left:-10000px;top:0}
+.recrop{margin-top:6px;align-self:flex-start;font-size:.85rem;padding:5px 10px}
+dialog#cropDlg{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);padding:16px;width:min(960px,94vw);max-height:94vh}
+dialog#cropDlg::backdrop{background:rgba(0,0,0,.55)}
+.cropHead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.cropHead h3{margin:0;font-family:var(--serif);font-size:1.1rem}
+.stageWrap{display:flex;justify-content:center;background:#2a2f2d;border-radius:4px;padding:10px}
+.stage{position:relative;touch-action:none;user-select:none;overflow:hidden;line-height:0}
+.stage canvas{display:block}
+.cbox{position:absolute;border:2px solid #fff;box-shadow:0 0 0 9999px rgba(0,0,0,.5);cursor:move}
+.cbox::before,.cbox::after{content:"";position:absolute;border:1px dashed rgba(255,255,255,.45);pointer-events:none}
+.cbox::before{left:33.3%;right:33.3%;top:0;bottom:0;border-top:0;border-bottom:0}
+.cbox::after{top:33.3%;bottom:33.3%;left:0;right:0;border-left:0;border-right:0}
+.cbox i{position:absolute;width:22px;height:22px;background:#fff;border:2px solid var(--accent);border-radius:50%}
+.cbox i[data-h=nw]{left:-12px;top:-12px;cursor:nwse-resize}.cbox i[data-h=ne]{right:-12px;top:-12px;cursor:nesw-resize}
+.cbox i[data-h=sw]{left:-12px;bottom:-12px;cursor:nesw-resize}.cbox i[data-h=se]{right:-12px;bottom:-12px;cursor:nwse-resize}
+.cropBar{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;margin-top:12px}
+.cropBar .grp{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -195,8 +212,8 @@ button.b:disabled{opacity:.5;cursor:default}
       <label class="b ghost" style="flex-direction:row;cursor:pointer;color:var(--ink);font-size:.95rem">上傳簽名圖檔<input type="file" id="sigFile" accept="image/*" hidden></label>
     </div>
     <div class="files">
-      <label>身分證正面<input type="file" id="idF" accept="image/*"></label>
-      <label>身分證反面<input type="file" id="idB" accept="image/*"></label>
+      <div style="display:flex;flex-direction:column"><label>身分證正面<input type="file" id="idF" accept="image/*"></label><button type="button" class="b ghost recrop" id="recropF" hidden>重新裁切</button></div>
+      <div style="display:flex;flex-direction:column"><label>身分證反面<input type="file" id="idB" accept="image/*"></label><button type="button" class="b ghost recrop" id="recropB" hidden>重新裁切</button></div>
     </div>
     <p class="hint">簽名與證件影像只在這個頁面裡處理，不會被記憶或上傳。</p>
   </fieldset>
@@ -220,12 +237,29 @@ button.b:disabled{opacity:.5;cursor:default}
   <div class="previewScroll" id="pScroll"><div class="scaler" id="scaler"><div class="slip" id="slip"></div></div></div>
 </section>
 </main>
+
+<dialog id="cropDlg" aria-labelledby="cropTitle">
+  <div class="cropHead"><h3 id="cropTitle">裁切身分證</h3><span class="hint" style="margin:0">拖曳框框移動，拖四角調整大小</span></div>
+  <div class="stageWrap"><div class="stage" id="stage"><canvas id="cropCv"></canvas><div class="cbox" id="cbox"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div></div></div>
+  <div class="cropBar">
+    <div class="grp">
+      <button type="button" class="b" id="rotL" aria-label="逆時針旋轉">↺ 旋轉</button>
+      <button type="button" class="b" id="rotR" aria-label="順時針旋轉">↻ 旋轉</button>
+      <label class="check"><input type="checkbox" id="lockRatio" checked>固定身分證比例</label>
+      <button type="button" class="b ghost" id="cropReset">重設框</button>
+    </div>
+    <div class="grp">
+      <button type="button" class="b ghost" id="cropSkip">不裁切</button>
+      <button type="button" class="b primary" id="cropOk">確定裁切</button>
+    </div>
+  </div>
+</dialog>
 <footer style="padding:0 clamp(16px,4vw,40px) 32px;color:var(--muted);font-size:.8rem">所有資料只在您的瀏覽器內處理，不會上傳到任何伺服器。試算結果僅供參考，實際扣繳請依財政部及健保署最新規定。</footer>
 
 <script>
 /* ===== 年度參數（每年依財政部／健保署公告更新） ===== */
 /* ===== 後台網址：部署 Apps Script 後，把網址貼在引號內 ===== */
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwt4XYpQJ779ARW0gLsccjMd2_NdU5Aj5u1qm-2OB7nexuifTi1583YHFHNIEQ2v7XI/exec';
+const BACKEND_URL = '';
 
 const RULES = {
   year: 115,
@@ -247,6 +281,7 @@ const store = {
 let cat = '9A';
 let recId = newId();
 function newId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+let idFrontSrc = null, idBackSrc = null;
 let sigData = null, sigUpload = null, idFront = null, idBack = null;
 
 /* ===== 計算 ===== */
@@ -378,8 +413,8 @@ function render(){
     <table style="margin-top:12px">
       <tr><th class="sec" colspan="2">身分證影本黏貼處</th></tr>
       <tr class="idrow">
-        <td style="width:50%">${idFront?`<img src="${idFront}" alt="">`:'正面'}</td>
-        <td>${idBack?`<img src="${idBack}" alt="">`:'反面'}</td>
+        <td style="width:50%">${idFront?`<img class="hq" src="${idFront}" alt="">`:'正面'}</td>
+        <td>${idBack?`<img class="hq" src="${idBack}" alt="">`:'反面'}</td>
       </tr>
     </table>
     <div class="foot">
@@ -445,10 +480,95 @@ cv.addEventListener('pointermove',e=>{ if(!drawing) return; const [x,y]=pt(e); c
 const endDraw=()=>{ if(!drawing) return; drawing=false; if(dirty){ sigData=cv.toDataURL('image/png'); sigUpload=null; render(); } };
 cv.addEventListener('pointerup',endDraw); cv.addEventListener('pointercancel',endDraw);
 $('sigClear').onclick=()=>{ ctx.clearRect(0,0,cv.width,cv.height); sigData=null; sigUpload=null; dirty=false; $('sigFile').value=''; render(); };
-const readImg=(input,cb)=>input.addEventListener('change',()=>{ const f=input.files[0]; if(!f) { cb(null); render(); return; } const fr=new FileReader(); fr.onload=()=>{ cb(fr.result); render(); }; fr.readAsDataURL(f); });
-readImg($('sigFile'),v=>sigUpload=v);
-readImg($('idF'),v=>idFront=v);
-readImg($('idB'),v=>idBack=v);
+const readImg=(input,cb,opt={})=>input.addEventListener('change',()=>{
+  const f=input.files[0]; if(!f){ cb(null); render(); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      // 保留高解析：長邊最多 2400px，避免手機原圖過大
+      const max=opt.max||2400, k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight));
+      const c=document.createElement('canvas'); c.width=Math.round(im.naturalWidth*k); c.height=Math.round(im.naturalHeight*k);
+      const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+      x.imageSmoothingQuality='high'; x.drawImage(im,0,0,c.width,c.height);
+      cb(opt.png? c.toDataURL('image/png') : c.toDataURL('image/jpeg',0.92)); render();
+    };
+    im.onerror=()=>{ status('圖片無法讀取，請改用 JPG 或 PNG。',true); };
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(f);
+});
+readImg($('sigFile'),v=>sigUpload=v,{max:1200,png:true});
+readImg($('idF'),v=>{ idFrontSrc=v; idFront=v; $('recropF').hidden=!v; if(v) openCrop('F'); });
+readImg($('idB'),v=>{ idBackSrc=v; idBack=v; $('recropB').hidden=!v; if(v) openCrop('B'); });
+$('recropF').onclick=()=>openCrop('F');
+$('recropB').onclick=()=>openCrop('B');
+
+/* ===== 裁切 ===== */
+const CARD=85.6/54;
+const cr={side:null,img:null,rot:0,rc:null,k:1,W:0,H:0,box:{x:0,y:0,w:0,h:0},drag:null};
+function openCrop(side){
+  const src= side==='F'?idFrontSrc:idBackSrc; if(!src) return;
+  cr.side=side; cr.rot=0;
+  $('cropTitle').textContent = side==='F'?'裁切身分證正面':'裁切身分證反面';
+  const im=new Image(); im.onload=()=>{ cr.img=im; $('cropDlg').showModal(); buildRot(); }; im.src=src;
+}
+function buildRot(){
+  const im=cr.img, r=cr.rot, sw=im.naturalWidth, sh=im.naturalHeight, side=r%180!==0;
+  const c=document.createElement('canvas'); c.width=side?sh:sw; c.height=side?sw:sh;
+  const x=c.getContext('2d'); x.translate(c.width/2,c.height/2); x.rotate(r*Math.PI/180); x.drawImage(im,-sw/2,-sh/2);
+  cr.rc=c; layoutCrop();
+}
+function layoutCrop(){
+  const rc=cr.rc, maxW=$('stage').parentElement.clientWidth-20, maxH=window.innerHeight*0.62;
+  const k=Math.min(maxW/rc.width, maxH/rc.height, 1);
+  const cv=$('cropCv'); cr.W=Math.round(rc.width*k); cr.H=Math.round(rc.height*k); cr.k=rc.width/cr.W;
+  const dpr=window.devicePixelRatio||1; cv.width=cr.W*dpr; cv.height=cr.H*dpr; cv.style.width=cr.W+'px'; cv.style.height=cr.H+'px';
+  const x=cv.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(rc,0,0,cv.width,cv.height);
+  resetBox();
+}
+function resetBox(){
+  let w=cr.W*.9, h=$('lockRatio').checked? w/CARD : cr.H*.9;
+  if(h>cr.H*.9){ h=cr.H*.9; if($('lockRatio').checked) w=h*CARD; }
+  cr.box={x:(cr.W-w)/2,y:(cr.H-h)/2,w,h}; drawBox();
+}
+function drawBox(){ const b=cr.box, e=$('cbox').style; e.left=b.x+'px'; e.top=b.y+'px'; e.width=b.w+'px'; e.height=b.h+'px'; }
+function stagePt(e){ const r=$('stage').getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+$('cbox').addEventListener('pointerdown',e=>{
+  e.preventDefault(); $('cbox').setPointerCapture(e.pointerId);
+  const h=e.target.dataset.h||null, b=cr.box, p=stagePt(e);
+  cr.drag={h, p0:p, b0:{...b}, ax: h? (h.includes('e')?b.x:b.x+b.w):0, ay: h? (h.includes('s')?b.y:b.y+b.h):0};
+});
+$('cbox').addEventListener('pointermove',e=>{
+  const d=cr.drag; if(!d) return; const p=stagePt(e), b=cr.box, MIN=30;
+  if(!d.h){
+    b.x=Math.max(0,Math.min(cr.W-b.w, d.b0.x+p.x-d.p0.x));
+    b.y=Math.max(0,Math.min(cr.H-b.h, d.b0.y+p.y-d.p0.y));
+  } else {
+    const sx=d.h.includes('e')?1:-1, sy=d.h.includes('s')?1:-1;
+    const maxW= sx>0? cr.W-d.ax : d.ax, maxH= sy>0? cr.H-d.ay : d.ay;
+    let w=Math.max(MIN, sx*(p.x-d.ax)), h=Math.max(MIN, sy*(p.y-d.ay));
+    if($('lockRatio').checked){ w=Math.min(Math.max(w,h*CARD), maxW, maxH*CARD); h=w/CARD; }
+    else { w=Math.min(w,maxW); h=Math.min(h,maxH); }
+    b.w=w; b.h=h; b.x= sx>0? d.ax : d.ax-w; b.y= sy>0? d.ay : d.ay-h;
+  }
+  drawBox();
+});
+const endCrop=()=>{ cr.drag=null; };
+$('cbox').addEventListener('pointerup',endCrop); $('cbox').addEventListener('pointercancel',endCrop);
+$('rotL').onclick=()=>{ cr.rot=(cr.rot+270)%360; buildRot(); };
+$('rotR').onclick=()=>{ cr.rot=(cr.rot+90)%360; buildRot(); };
+$('lockRatio').onchange=resetBox; $('cropReset').onclick=resetBox;
+function setSide(v){ if(cr.side==='F') idFront=v; else idBack=v; render(); }
+$('cropSkip').onclick=()=>{ setSide(cr.rot? cr.rc.toDataURL('image/jpeg',0.92) : (cr.side==='F'?idFrontSrc:idBackSrc)); $('cropDlg').close(); };
+$('cropOk').onclick=()=>{
+  const b=cr.box, k=cr.k, o=document.createElement('canvas');
+  o.width=Math.round(b.w*k); o.height=Math.round(b.h*k);
+  const x=o.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,o.width,o.height); x.imageSmoothingQuality='high';
+  x.drawImage(cr.rc, b.x*k, b.y*k, b.w*k, b.h*k, 0, 0, o.width, o.height);
+  setSide(o.toDataURL('image/jpeg',0.92)); $('cropDlg').close();
+};
+window.addEventListener('resize',()=>{ if($('cropDlg').open) layoutCrop(); });
 
 /* ===== 輸入 ===== */
 document.querySelectorAll('#f input:not([type=file]), #f select, #f textarea').forEach(el=>{
@@ -467,7 +587,7 @@ function newSerial(){
 $('newSlip').onclick=()=>{
   ['project','desc','amt','from','to'].forEach(k=>$(k).value='');
   $('payDate').value=today(); $('serial').value=newSerial(); recId=newId();
-  $('sigClear').click(); idFront=idBack=null; $('idF').value=''; $('idB').value='';
+  $('sigClear').click(); idFront=idBack=idFrontSrc=idBackSrc=null; $('idF').value=''; $('idB').value=''; $('recropF').hidden=$('recropB').hidden=true;
   render(); status('已開新的一張；所得人資料保留。');
 };
 
@@ -514,11 +634,20 @@ $('dlPdf').onclick=async()=>{
     await document.fonts.ready;
     const clone=$('slip').cloneNode(true); clone.id='';
     const holder=document.createElement('div'); holder.className='offscreen'; holder.appendChild(clone); document.body.appendChild(holder);
-    const canvas=await html2canvas(clone,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    // 證件影像不經截圖，記下位置後以原始解析度另外貼進 PDF
+    const base=clone.getBoundingClientRect();
+    const hq=[...clone.querySelectorAll('img.hq')].map(img=>{
+      const r=img.getBoundingClientRect();
+      const o={src:img.src,x:r.left-base.left,y:r.top-base.top,w:r.width,h:r.height};
+      img.style.visibility='hidden'; return o;
+    });
+    const canvas=await html2canvas(clone,{scale:3,backgroundColor:'#ffffff',useCORS:true});
     holder.remove();
     const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'mm',format:'a4'});
     const W=210, H=297, ih=canvas.height*W/canvas.width;
     pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,Math.min(ih,H));
+    const mm=W/794;
+    hq.forEach(o=>pdf.addImage(o.src,'JPEG',o.x*mm,o.y*mm,o.w*mm,o.h*mm,undefined,'NONE'));
     const blob=pdf.output('blob');
     const fname=`勞報單_${$('name').value||'所得人'}_${$('serial').value||today()}.pdf`;
     if(downloads){
