@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="一璟室內裝修設計有限公司 勞務報酬單產生器：自動試算扣繳稅額與二代健保補充保費，產出可簽章 PDF。">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧾</text></svg>">
+<title>勞務報酬單產生器｜一璟室內裝修設計有限公司</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EEF0EE; --panel:#FFFFFF; --ink:#1F2624; --muted:#5E6966; --line:#D3D8D5;
+  --accent:#36564F; --accent-ink:#FFFFFF; --warn:#9A3B2C; --field:#F7F8F7;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --serif:"Noto Serif TC","PMingLiU","Songti TC",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161A19; --panel:#1F2523; --ink:#E6EBE9; --muted:#9AA6A2; --line:#35403D;
+    --accent:#7FA79D; --accent-ink:#0F1513; --warn:#E58C7A; --field:#262D2B;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161A19; --panel:#1F2523; --ink:#E6EBE9; --muted:#9AA6A2; --line:#35403D;
+  --accent:#7FA79D; --accent-ink:#0F1513; --warn:#E58C7A; --field:#262D2B;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+header.top{padding:20px clamp(16px,4vw,40px) 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;border-bottom:1px solid var(--line)}
+header.top h1{margin:0;font-family:var(--serif);font-weight:700;font-size:1.5rem;letter-spacing:.04em}
+header.top .co{color:var(--muted);font-size:.95rem}
+main{display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:24px;padding:20px clamp(16px,4vw,40px) 48px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+form{display:flex;flex-direction:column;gap:18px}
+fieldset{border:1px solid var(--line);background:var(--panel);border-radius:6px;margin:0;padding:14px 16px 16px}
+legend{font-family:var(--serif);font-weight:600;font-size:1.02rem;padding:0 6px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row.one{grid-template-columns:1fr}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:4px;padding:7px 9px;width:100%}
+textarea{resize:vertical;min-height:58px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:.9rem}
+.check input{width:auto}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;border-right:1px solid var(--line);background:var(--field);color:var(--ink);padding:8px 4px;font:inherit;font-size:.88rem;cursor:pointer}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.hint{font-size:.8rem;color:var(--muted);margin:6px 0 0}
+.result{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.result dt{color:var(--muted)}
+.result dd{margin:0;text-align:right}
+.result .net{font-family:var(--serif);font-size:1.5rem;font-weight:700}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button.b{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:4px;cursor:pointer}
+button.b.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button.b.ghost{background:transparent}
+button.b:disabled{opacity:.5;cursor:default}
+.status{font-size:.85rem;color:var(--muted);min-height:1.3em}
+.status.err{color:var(--warn)}
+.files{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sigpad{border:1px dashed var(--line);background:#fff;border-radius:4px;touch-action:none;width:100%;height:120px;display:block}
+.payees{display:flex;gap:8px;align-items:end;margin-bottom:10px}
+.payees label{flex:1}
+
+/* preview */
+.previewWrap{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.previewScroll{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+.scaler{transform-origin:top left}
+/* the slip itself is fixed paper, not themed */
+.slip{width:794px;min-height:1123px;background:#fff;color:#111;font-family:var(--serif);padding:52px 56px 44px;position:relative}
+.slip h2{margin:0;text-align:center;font-size:26px;letter-spacing:.5em;font-weight:700;padding-left:.5em}
+.slip .sub{display:flex;justify-content:space-between;font-size:13px;margin:14px 0 8px;font-family:var(--sans);color:#333}
+.slip table{width:100%;border-collapse:collapse;font-size:14px}
+.slip th,.slip td{border:1px solid #222;padding:7px 9px;vertical-align:middle}
+.slip th{background:#F1F2F1;font-weight:600;width:112px;text-align:center;white-space:nowrap}
+.slip td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--sans)}
+.slip .sec{background:#36564F;color:#fff;text-align:left;letter-spacing:.2em;font-weight:600;width:auto}
+.slip .cats{display:flex;gap:18px;flex-wrap:wrap}
+.slip .box{display:inline-block;width:13px;height:13px;border:1px solid #222;margin-right:4px;vertical-align:-1px;text-align:center;line-height:11px;font-size:11px}
+.slip .big{font-size:17px;font-weight:700}
+.slip .sigrow td{height:118px;vertical-align:top}
+.slip .sigrow img{max-height:92px;max-width:100%;display:block;margin:4px auto 0}
+.slip .idrow td{height:200px;text-align:center;vertical-align:middle;color:#888;font-size:13px}
+.slip .idrow img{max-width:100%;max-height:186px;display:block;margin:0 auto}
+.slip .foot{font-size:11.5px;color:#444;margin-top:12px;font-family:var(--sans);line-height:1.6}
+.slip .muted{color:#666;font-size:12px}
+.offscreen{position:fixed;left:-10000px;top:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>勞務報酬單產生器</h1>
+  <span class="co" id="coLabel">一璟室內裝修設計有限公司</span>
+</header>
+
+<main>
+<form id="f" autocomplete="off" onsubmit="return false">
+
+  <fieldset>
+    <legend>給付單位</legend>
+    <div class="row one"><label>公司名稱<input id="payerName" value="一璟室內裝修設計有限公司"></label></div>
+    <div class="row">
+      <label>統一編號<input id="payerTax" inputmode="numeric" maxlength="8" placeholder="8 碼"></label>
+      <label>電話<input id="payerTel"></label>
+    </div>
+    <div class="row one"><label>地址<input id="payerAddr"></label></div>
+    <p class="hint">給付單位資料會記在這台裝置的瀏覽器，下次自動帶入。</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>所得人</legend>
+    <div class="payees">
+      <label>常用所得人<select id="payeeList"><option value="">（新所得人）</option></select></label>
+      <button type="button" class="b" id="savePayee">存為常用</button>
+    </div>
+    <div class="row">
+      <label>姓名<input id="name"></label>
+      <label>身分證字號／居留證號<input id="idno" maxlength="10" style="text-transform:uppercase"></label>
+    </div>
+    <div class="row">
+      <label>出生日期<input id="birth" type="date"></label>
+      <label>電話<input id="tel"></label>
+    </div>
+    <div class="row one"><label>戶籍地址<input id="addr"></label></div>
+    <div class="row">
+      <label>匯款銀行／分行<input id="bank" placeholder="例：台中銀行 西屯分行"></label>
+      <label>帳號<input id="acct" inputmode="numeric"></label>
+    </div>
+    <div class="row one">
+      <label>身分
+        <select id="res">
+          <option value="1">本國人／在臺滿 183 天外國人</option>
+          <option value="0">外國人在臺未滿 183 天</option>
+        </select>
+      </label>
+    </div>
+    <label class="check"><input type="checkbox" id="nhiEx">免扣二代健保補充保費（職業工會投保等）</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>給付內容</legend>
+    <div class="row">
+      <label>給付日期<input id="payDate" type="date"></label>
+      <label>單號<input id="serial"></label>
+    </div>
+    <div class="row">
+      <label>服務期間（起）<input id="from" type="date"></label>
+      <label>服務期間（迄）<input id="to" type="date"></label>
+    </div>
+    <div class="row one"><label>案名／工程名稱<input id="project" placeholder="例：西屯區○○住宅室內設計案"></label></div>
+    <div class="row one"><label>勞務內容<textarea id="desc" placeholder="例：3D 透視圖繪製 6 張"></textarea></label></div>
+
+    <label style="margin-top:6px">所得類別</label>
+    <div class="seg" id="catSeg" role="group" aria-label="所得類別">
+      <button type="button" data-v="9A" aria-pressed="true">9A 執行業務</button>
+      <button type="button" data-v="9B" aria-pressed="false">9B 稿費</button>
+      <button type="button" data-v="50" aria-pressed="false">50 兼職薪資</button>
+      <button type="button" data-v="92" aria-pressed="false">92 其他</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>9A 執業類別代號<input id="code9a" value="9A-90" placeholder="例：9A-90 其他執行業務"></label>
+      <label>金額輸入方式
+        <select id="mode"><option value="gross">輸入給付總額</option><option value="net">輸入實領金額（反算）</option></select>
+      </label>
+    </div>
+    <div class="row one" style="margin-top:10px">
+      <label id="amtLabel">給付總額（元）<input id="amt" inputmode="numeric" placeholder="0"></label>
+    </div>
+    <p class="hint" id="ruleHint"></p>
+    <dl class="result">
+      <dt>給付總額</dt><dd id="rGross">0</dd>
+      <dt>扣繳所得稅</dt><dd id="rTax">0</dd>
+      <dt>二代健保補充保費</dt><dd id="rNhi">0</dd>
+      <dt>實付金額</dt><dd class="net" id="rNet">0</dd>
+    </dl>
+  </fieldset>
+
+  <fieldset>
+    <legend>簽章與證件</legend>
+    <label>所得人簽名（手寫）</label>
+    <canvas class="sigpad" id="sig" aria-label="簽名板"></canvas>
+    <div class="btns" style="margin:8px 0 12px">
+      <button type="button" class="b ghost" id="sigClear">清除簽名</button>
+      <label class="b ghost" style="flex-direction:row;cursor:pointer;color:var(--ink);font-size:.95rem">上傳簽名圖檔<input type="file" id="sigFile" accept="image/*" hidden></label>
+    </div>
+    <div class="files">
+      <label>身分證正面<input type="file" id="idF" accept="image/*"></label>
+      <label>身分證反面<input type="file" id="idB" accept="image/*"></label>
+    </div>
+    <p class="hint">簽名與證件影像只在這個頁面裡處理，不會被記憶或上傳。</p>
+  </fieldset>
+
+  <div class="btns">
+    <button type="button" class="b primary" id="dlPdf">下載 PDF</button>
+    <button type="button" class="b" id="newSlip">開新的一張</button>
+    <button type="button" class="b ghost" id="forget">清除記憶</button>
+  </div>
+  <div class="status" id="status" role="status"></div>
+</form>
+
+<section class="previewWrap" aria-label="預覽">
+  <div class="previewScroll" id="pScroll"><div class="scaler" id="scaler"><div class="slip" id="slip"></div></div></div>
+</section>
+</main>
+<footer style="padding:0 clamp(16px,4vw,40px) 32px;color:var(--muted);font-size:.8rem">所有資料只在您的瀏覽器內處理，不會上傳到任何伺服器。試算結果僅供參考，實際扣繳請依財政部及健保署最新規定。</footer>
+
+<script>
+/* ===== 年度參數（每年依財政部／健保署公告更新） ===== */
+const RULES = {
+  year: 115,
+  minWage: 29500,          // 基本工資（50 類補充保費門檻）
+  t9: 20010,               // 9A/9B 扣繳門檻
+  nhi9: 20000,             // 9A/9B 補充保費門檻
+  t50: 90501,              // 50 薪資扣繳門檻（按全月給付總額）
+  nhiRate: 0.0211,
+  nhiCap: 10000000         // 單次給付補充保費計費上限
+};
+
+const $ = id => document.getElementById(id);
+const fmt = n => (Math.round(n)||0).toLocaleString('zh-TW');
+const store = {
+  get(k){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+let cat = '9A';
+let sigData = null, sigUpload = null, idFront = null, idBack = null;
+
+/* ===== 計算 ===== */
+function calc(G, c, resident, nhiEx){
+  G = Math.max(0, Math.floor(G||0));
+  let tax = 0, nhi = 0, taxRate = 0;
+  const nhiOn = !nhiEx && c !== '92';
+  if (resident){
+    if (c==='9A'||c==='9B'){ if (G >= RULES.t9){ taxRate=.10; } if (nhiOn && G >= RULES.nhi9) nhi = Math.round(Math.min(G,RULES.nhiCap)*RULES.nhiRate); }
+    if (c==='50'){ if (G >= RULES.t50){ taxRate=.05; } if (nhiOn && G >= RULES.minWage) nhi = Math.round(Math.min(G,RULES.nhiCap)*RULES.nhiRate); }
+  } else {
+    if (c==='9A'||c==='92') taxRate=.20;
+    if (c==='9B') taxRate = G > 5000 ? .20 : 0;
+    if (c==='50') taxRate = G < RULES.minWage*1.5 ? .06 : .18;
+    if (nhiOn){
+      if ((c==='9A'||c==='9B') && G >= RULES.nhi9) nhi = Math.round(Math.min(G,RULES.nhiCap)*RULES.nhiRate);
+      if (c==='50' && G >= RULES.minWage) nhi = Math.round(Math.min(G,RULES.nhiCap)*RULES.nhiRate);
+    }
+  }
+  tax = Math.floor(G*taxRate);
+  return {gross:G, tax, nhi, net:G-tax-nhi, taxRate};
+}
+function reverse(N, c, res, ex){
+  N = Math.max(0, Math.floor(N||0));
+  const cands = new Set();
+  for (const r of [0,.0211,.05,.06,.10,.18,.20,.0711,.0811,.1211,.2011,.2211]){
+    const g = Math.floor(N/(1-r));
+    for (let d=-6; d<=6; d++) if (g+d>=0) cands.add(g+d);
+  }
+  const list = [...cands].sort((a,b)=>a-b);
+  const exact = list.find(g => calc(g,c,res,ex).net === N);
+  if (exact !== undefined) return calc(exact,c,res,ex);
+  const over = list.find(g => calc(g,c,res,ex).net >= N);
+  return calc(over ?? N, c, res, ex);
+}
+
+/* ===== 國字大寫 ===== */
+function toChineseAmt(n){
+  n = Math.floor(n);
+  if (!n) return '零元整';
+  const d='零壹貳參肆伍陸柒捌玖', u=['','拾','佰','仟'], big=['','萬','億','兆'];
+  let s='', i=0, zero=false;
+  while(n>0){
+    const sec = n%10000; n=Math.floor(n/10000);
+    let t='', z=false;
+    for(let k=0;k<4;k++){
+      const v = Math.floor(sec/Math.pow(10,k))%10;
+      if (v===0){ if (t) z=true; }
+      else { t = d[v]+u[k] + (z?'零':'') + t; z=false; }
+    }
+    if (t){ s = t + big[i] + (zero?'零':'') + s; zero = sec<1000; }
+    else if (s) zero=true;
+    i++;
+  }
+  return '新臺幣' + s.replace(/^零/,'') + '元整';
+}
+
+/* ===== 日期 ===== */
+const roc = v => { if(!v) return '　　年　　月　　日'; const [y,m,d]=v.split('-').map(Number); return `${y-1911} 年 ${m} 月 ${d} 日`; };
+const today = () => { const t=new Date(); t.setMinutes(t.getMinutes()-t.getTimezoneOffset()); return t.toISOString().slice(0,10); };
+const esc = s => String(s??'').replace(/[&<>"]/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+/* ===== 狀態 ===== */
+function vals(){
+  const res = $('res').value==='1';
+  const ex = $('nhiEx').checked;
+  const amt = parseInt(String($('amt').value).replace(/[^\d]/g,''))||0;
+  const r = $('mode').value==='net' ? reverse(amt,cat,res,ex) : calc(amt,cat,res,ex);
+  return {res, ex, r};
+}
+const CATNAME = {'9A':'9A 執行業務所得','9B':'9B 稿費／講演鐘點費','50':'50 薪資所得（兼職）','92':'92 其他所得'};
+
+function hintText(res){
+  if (!res){
+    return {'9A':'非居住者：一律扣 20%，無免扣門檻。','9B':'非居住者：單次 $5,000 以下免扣，超過全額扣 20%。','50':`非居住者：扣 18%；給付未達基本工資 1.5 倍（$${fmt(RULES.minWage*1.5)}）扣 6%。`,'92':'非居住者：扣 20%。'}[cat];
+  }
+  return {'9A':`達 $${fmt(RULES.t9)} 扣 10% 所得稅；達 $${fmt(RULES.nhi9)} 扣 2.11% 補充保費。`,
+          '9B':`達 $${fmt(RULES.t9)} 扣 10% 所得稅；達 $${fmt(RULES.nhi9)} 扣 2.11% 補充保費。`,
+          '50':`達 $${fmt(RULES.t50)} 扣 5% 所得稅；達基本工資 $${fmt(RULES.minWage)} 扣 2.11% 補充保費。`,
+          '92':'免扣繳（仍須列單申報），不扣補充保費。'}[cat];
+}
+
+function render(){
+  const {res, ex, r} = vals();
+  $('rGross').textContent = fmt(r.gross);
+  $('rTax').textContent = (r.taxRate? `${Math.round(r.taxRate*100)}%　` : '') + fmt(r.tax);
+  $('rNhi').textContent = fmt(r.nhi);
+  $('rNet').textContent = fmt(r.net);
+  $('ruleHint').textContent = hintText(res);
+  $('amtLabel').firstChild.textContent = $('mode').value==='net' ? '實領金額（元）' : '給付總額（元）';
+  $('code9a').disabled = cat!=='9A';
+  $('coLabel').textContent = $('payerName').value || '';
+
+  const box = on => `<span class="box">${on?'✓':''}</span>`;
+  const sig = sigUpload || sigData;
+  const period = ($('from').value||$('to').value) ? `${roc($('from').value)} 至 ${roc($('to').value)}` : '';
+  $('slip').innerHTML = `
+    <h2>勞務報酬單</h2>
+    <div class="sub"><span>單號：${esc($('serial').value)}</span><span>給付日期：中華民國 ${roc($('payDate').value)}</span></div>
+    <table>
+      <tr><th class="sec" colspan="4">給付單位</th></tr>
+      <tr><th>名稱</th><td>${esc($('payerName').value)}</td><th>統一編號</th><td>${esc($('payerTax').value)}</td></tr>
+      <tr><th>地址</th><td>${esc($('payerAddr').value)}</td><th>電話</th><td>${esc($('payerTel').value)}</td></tr>
+
+      <tr><th class="sec" colspan="4">所得人</th></tr>
+      <tr><th>姓名</th><td>${esc($('name').value)}</td><th>身分證字號</th><td>${esc($('idno').value.toUpperCase())}</td></tr>
+      <tr><th>出生日期</th><td>${$('birth').value?roc($('birth').value):''}</td><th>電話</th><td>${esc($('tel').value)}</td></tr>
+      <tr><th>戶籍地址</th><td colspan="3">${esc($('addr').value)}</td></tr>
+      <tr><th>身分</th><td colspan="3">${box(res)}本國人／在臺滿 183 天外國人　　${box(!res)}外國人在臺未滿 183 天</td></tr>
+      <tr><th>匯款帳戶</th><td colspan="3">${esc($('bank').value)}${$('acct').value?'　帳號 '+esc($('acct').value):''}</td></tr>
+
+      <tr><th class="sec" colspan="4">給付內容</th></tr>
+      <tr><th>所得類別</th><td colspan="3"><div class="cats">
+        ${['9A','9B','50','92'].map(k=>`<span>${box(cat===k)}${CATNAME[k]}${k==='9A'&&cat==='9A'&&$('code9a').value?'（'+esc($('code9a').value)+'）':''}</span>`).join('')}
+      </div></td></tr>
+      <tr><th>案名</th><td colspan="3">${esc($('project').value)}</td></tr>
+      <tr><th>勞務內容</th><td colspan="3" style="white-space:pre-wrap;height:58px;vertical-align:top">${esc($('desc').value)}</td></tr>
+      <tr><th>服務期間</th><td colspan="3">${period}</td></tr>
+
+      <tr><th>給付總額</th><td class="num">${fmt(r.gross)}</td><th>扣繳所得稅</th><td class="num">${fmt(r.tax)}${r.taxRate?` <span class="muted">（${Math.round(r.taxRate*100)}%）</span>`:''}</td></tr>
+      <tr><th>補充保費</th><td class="num">${fmt(r.nhi)}${r.nhi?' <span class="muted">（2.11%）</span>':(ex?' <span class="muted">（免扣）</span>':'')}</td><th>實付金額</th><td class="num big">${fmt(r.net)}</td></tr>
+      <tr><th>實付大寫</th><td colspan="3" class="big">${toChineseAmt(r.net)}</td></tr>
+
+      <tr class="sigrow">
+        <th>所得人簽章</th><td>${sig?`<img src="${sig}" alt="">`:''}</td>
+        <th>經辦／主管</th><td></td>
+      </tr>
+    </table>
+    <table style="margin-top:12px">
+      <tr><th class="sec" colspan="2">身分證影本黏貼處</th></tr>
+      <tr class="idrow">
+        <td style="width:50%">${idFront?`<img src="${idFront}" alt="">`:'正面'}</td>
+        <td>${idBack?`<img src="${idBack}" alt="">`:'反面'}</td>
+      </tr>
+    </table>
+    <div class="foot">
+      本人確已收到上列報酬，並同意由給付單位依法代扣所得稅及二代健保補充保費。<br>
+      扣繳稅額於給付次月 10 日前繳納；補充保費於給付次月底前繳納。
+    </div>`;
+  fitPreview();
+  savePayer();
+}
+
+/* ===== 預覽縮放 ===== */
+function fitPreview(){
+  const w = $('pScroll').clientWidth - 32;
+  const s = Math.min(1, w/794);
+  $('scaler').style.transform = `scale(${s})`;
+  $('scaler').style.height = ($('slip').offsetHeight*s)+'px';
+  $('scaler').style.width = (794*s)+'px';
+}
+window.addEventListener('resize', fitPreview);
+
+/* ===== 記憶 ===== */
+const PAYER_KEYS = ['payerName','payerTax','payerTel','payerAddr'];
+const PAYEE_KEYS = ['name','idno','birth','tel','addr','bank','acct','res'];
+function savePayer(){ const o={}; PAYER_KEYS.forEach(k=>o[k]=$(k).value); store.set('ij_payer',o); }
+function loadPayer(){ const o=store.get('ij_payer'); if(o) PAYER_KEYS.forEach(k=>{ if(o[k]!=null) $(k).value=o[k]; }); }
+function payees(){ return store.get('ij_payees')||[]; }
+function refreshPayees(){
+  const sel=$('payeeList'); const cur=sel.value;
+  sel.innerHTML='<option value="">（新所得人）</option>'+payees().map((p,i)=>`<option value="${i}">${esc(p.name)}${p.idno?'　'+esc(p.idno.slice(0,3))+'****':''}</option>`).join('');
+  sel.value = cur;
+}
+$('savePayee').onclick=()=>{
+  const p={}; PAYEE_KEYS.forEach(k=>p[k]=$(k).value); p.nhiEx=$('nhiEx').checked; p.cat=cat;
+  if(!p.name){ status('先填所得人姓名再存。',true); return; }
+  const list=payees(); const i=list.findIndex(x=>x.name===p.name && x.idno===p.idno);
+  if(i>=0) list[i]=p; else list.push(p);
+  store.set('ij_payees',list); refreshPayees();
+  $('payeeList').value = String(i>=0?i:list.length-1);
+  status(`已存為常用所得人：${p.name}`);
+};
+$('payeeList').onchange=e=>{
+  const p=payees()[e.target.value];
+  if(!p){ PAYEE_KEYS.forEach(k=>$(k).value = k==='res'?'1':''); $('nhiEx').checked=false; render(); return; }
+  PAYEE_KEYS.forEach(k=>$(k).value=p[k]??''); $('nhiEx').checked=!!p.nhiEx; if(p.cat) setCat(p.cat); render();
+};
+$('forget').onclick=()=>{
+  if(!confirm('清除這台裝置上記住的給付單位與常用所得人？')) return;
+  store.del('ij_payer'); store.del('ij_payees'); refreshPayees(); status('已清除記憶。');
+};
+
+/* ===== 類別 ===== */
+function setCat(v){ cat=v; document.querySelectorAll('#catSeg button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===v)); }
+document.querySelectorAll('#catSeg button').forEach(b=>b.onclick=()=>{ setCat(b.dataset.v); render(); });
+$('res').onchange=()=>{ if($('res').value==='0') $('nhiEx').checked=true; render(); };
+
+/* ===== 簽名板 ===== */
+const cv=$('sig'), ctx=cv.getContext('2d'); let drawing=false, dirty=false;
+function sizePad(){ const r=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1; cv.width=r.width*dpr; cv.height=r.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#111'; }
+sizePad();
+const pt=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+cv.addEventListener('pointerdown',e=>{ drawing=true; cv.setPointerCapture(e.pointerId); const [x,y]=pt(e); ctx.beginPath(); ctx.moveTo(x,y); });
+cv.addEventListener('pointermove',e=>{ if(!drawing) return; const [x,y]=pt(e); ctx.lineTo(x,y); ctx.stroke(); dirty=true; });
+const endDraw=()=>{ if(!drawing) return; drawing=false; if(dirty){ sigData=cv.toDataURL('image/png'); sigUpload=null; render(); } };
+cv.addEventListener('pointerup',endDraw); cv.addEventListener('pointercancel',endDraw);
+$('sigClear').onclick=()=>{ ctx.clearRect(0,0,cv.width,cv.height); sigData=null; sigUpload=null; dirty=false; $('sigFile').value=''; render(); };
+const readImg=(input,cb)=>input.addEventListener('change',()=>{ const f=input.files[0]; if(!f) { cb(null); render(); return; } const fr=new FileReader(); fr.onload=()=>{ cb(fr.result); render(); }; fr.readAsDataURL(f); });
+readImg($('sigFile'),v=>sigUpload=v);
+readImg($('idF'),v=>idFront=v);
+readImg($('idB'),v=>idBack=v);
+
+/* ===== 輸入 ===== */
+document.querySelectorAll('#f input:not([type=file]), #f select, #f textarea').forEach(el=>{
+  if(el.id==='payeeList'||el.id==='res') return;
+  el.addEventListener('input',render);
+});
+$('amt').addEventListener('blur',()=>{ const n=parseInt(String($('amt').value).replace(/[^\d]/g,'')); $('amt').value = n? n.toLocaleString('zh-TW') : ''; });
+
+function status(msg,err){ const s=$('status'); s.textContent=msg; s.className='status'+(err?' err':''); }
+
+function newSerial(){
+  const d=($('payDate').value||today()).split('-'); const base=`${d[0]-1911}${d[1]}${d[2]}`;
+  const k='ij_seq_'+base; const n=(store.get(k)||0)+1; store.set(k,n);
+  return `${base}-${String(n).padStart(2,'0')}`;
+}
+$('newSlip').onclick=()=>{
+  ['project','desc','amt','from','to'].forEach(k=>$(k).value='');
+  $('payDate').value=today(); $('serial').value=newSerial();
+  $('sigClear').click(); idFront=idBack=null; $('idF').value=''; $('idB').value='';
+  render(); status('已開新的一張；所得人資料保留。');
+};
+
+/* ===== PDF ===== */
+let downloads=null;
+(async()=>{ try{ if(window.claude && window.claude.use) downloads = await window.claude.use('downloads'); }catch(e){} })();
+
+$('dlPdf').onclick=async()=>{
+  const btn=$('dlPdf'); btn.disabled=true; status('產生 PDF 中…');
+  try{
+    await document.fonts.ready;
+    const clone=$('slip').cloneNode(true); clone.id='';
+    const holder=document.createElement('div'); holder.className='offscreen'; holder.appendChild(clone); document.body.appendChild(holder);
+    const canvas=await html2canvas(clone,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    holder.remove();
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'mm',format:'a4'});
+    const W=210, H=297, ih=canvas.height*W/canvas.width;
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,Math.min(ih,H));
+    const blob=pdf.output('blob');
+    const fname=`勞報單_${$('name').value||'所得人'}_${$('serial').value||today()}.pdf`;
+    if(downloads){
+      try{ await downloads.save({filename:fname,data:blob}); status('PDF 已儲存：'+fname); }
+      catch(e){ status(e && e.code==='declined' ? '已取消儲存。' : '無法儲存檔案（'+(e&&e.code||'unknown')+'）。', e&&e.code!=='declined'); }
+    } else {
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),4000); status('PDF 已下載：'+fname);
+    }
+  }catch(e){ status('PDF 產生失敗：'+(e.message||e),true); }
+  btn.disabled=false;
+};
+
+/* ===== 初始化 ===== */
+loadPayer(); refreshPayees();
+$('payDate').value=today(); $('serial').value=newSerial();
+render();
+document.fonts && document.fonts.ready.then(fitPreview);
+</script>
+</body>
+</html>
