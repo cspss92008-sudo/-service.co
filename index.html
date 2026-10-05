@@ -259,7 +259,7 @@ dialog#cropDlg::backdrop{background:rgba(0,0,0,.55)}
 <script>
 /* ===== 年度參數（每年依財政部／健保署公告更新） ===== */
 /* ===== 後台網址：部署 Apps Script 後，把網址貼在引號內 ===== */
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwt4XYpQJ779ARW0gLsccjMd2_NdU5Aj5u1qm-2OB7nexuifTi1583YHFHNIEQ2v7XI/exec';
+const BACKEND_URL = '';
 
 const RULES = {
   year: 115,
@@ -635,6 +635,7 @@ $('dlPdf').onclick=async()=>{
     const clone=$('slip').cloneNode(true); clone.id='';
     const holder=document.createElement('div'); holder.className='offscreen'; holder.appendChild(clone); document.body.appendChild(holder);
     // 證件影像不經截圖，記下位置後以原始解析度另外貼進 PDF
+    await Promise.all([...clone.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
     const base=clone.getBoundingClientRect();
     const hq=[...clone.querySelectorAll('img.hq')].map(img=>{
       const r=img.getBoundingClientRect();
@@ -644,10 +645,11 @@ $('dlPdf').onclick=async()=>{
     const canvas=await html2canvas(clone,{scale:3,backgroundColor:'#ffffff',useCORS:true});
     holder.remove();
     const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:'mm',format:'a4'});
-    const W=210, H=297, ih=canvas.height*W/canvas.width;
-    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,W,Math.min(ih,H));
-    const mm=W/794;
-    hq.forEach(o=>pdf.addImage(o.src,'JPEG',o.x*mm,o.y*mm,o.w*mm,o.h*mm,undefined,'NONE'));
+    // 單據超過 A4 高度時等比例縮小並置中，證件影像套用同一個比例，位置才會對齊
+    const W=210, H=297, pw=base.width, ph=base.height;
+    const mm=Math.min(W/pw, H/ph), ox=(W-pw*mm)/2;
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',ox,0,pw*mm,ph*mm);
+    hq.forEach(o=>pdf.addImage(o.src,'JPEG',ox+o.x*mm,o.y*mm,o.w*mm,o.h*mm,undefined,'NONE'));
     const blob=pdf.output('blob');
     const fname=`勞報單_${$('name').value||'所得人'}_${$('serial').value||today()}.pdf`;
     if(downloads){
