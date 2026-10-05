@@ -203,11 +203,7 @@ button.b:disabled{opacity:.5;cursor:default}
 
   <fieldset id="syncBox" hidden>
     <legend>後台登錄</legend>
-    <div class="row">
-      <label>公司密碼<input id="syncPw" type="password" autocomplete="current-password"></label>
-      <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="pwRemember">在這台裝置記住</label>
-    </div>
-    <label class="check" style="margin-top:8px"><input type="checkbox" id="syncOn" checked>下載 PDF 時同步登錄到後台</label>
+    <label class="check"><input type="checkbox" id="syncOn" checked>下載 PDF 時同步登錄到後台</label>
     <p class="hint">登錄文字資料到公司 Google 試算表；簽名與證件影像不上傳。同一張單重複登錄會更新原本那列。</p>
   </fieldset>
 
@@ -229,7 +225,7 @@ button.b:disabled{opacity:.5;cursor:default}
 <script>
 /* ===== 年度參數（每年依財政部／健保署公告更新） ===== */
 /* ===== 後台網址：部署 Apps Script 後，把網址貼在引號內 ===== */
-const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzyth8828dEn-jHmauhEUI5bdp1zh5HMj5UXLNfOskXRxQ-HMmy3jJlIrZjWBs1VyHe/exec';
+const BACKEND_URL = '';
 
 const RULES = {
   year: 115,
@@ -431,7 +427,7 @@ $('payeeList').onchange=e=>{
 };
 $('forget').onclick=()=>{
   if(!confirm('清除這台裝置上記住的給付單位與常用所得人？')) return;
-  store.del('ij_payer'); store.del('ij_payees'); store.del('ij_pw'); $('syncPw').value=''; $('pwRemember').checked=false; refreshPayees(); status('已清除記憶。');
+  store.del('ij_payer'); store.del('ij_payees'); refreshPayees(); status('已清除記憶。');
 };
 
 /* ===== 類別 ===== */
@@ -485,7 +481,7 @@ function payload(){
   const pd=$('payDate').value; const [y,m,d]=(pd||today()).split('-').map(Number);
   const rocD=v=>{ if(!v) return ''; const [a,b,c]=v.split('-').map(Number); return `${a-1911}/${String(b).padStart(2,'0')}/${String(c).padStart(2,'0')}`; };
   return {
-    password:$('syncPw').value, id:recId,
+    id:recId,
     serial:$('serial').value, payDate:rocD(pd), year:`${y-1911}年`, month:`${y-1911}年${String(m).padStart(2,'0')}月`,
     project:$('project').value, name:$('name').value, idno:$('idno').value.toUpperCase(),
     resident: res?'居住者':'非居住者', category: CATNAME[cat] + (cat==='9A'&&$('code9a').value?'（'+$('code9a').value+'）':''),
@@ -498,12 +494,11 @@ function payload(){
 async function syncRecord(){
   if(!BACKEND_URL) return {ok:false,msg:'尚未設定後台網址'};
   const p=payload();
-  if(!p.password) return {ok:false,msg:'請輸入公司密碼'};
   if(!p.name||!p.gross) return {ok:false,msg:'所得人姓名與金額不可空白'};
   try{
     const res=await fetch(BACKEND_URL,{method:'POST',body:JSON.stringify(p)});
     const j=await res.json();
-    if(j.ok){ if($('pwRemember').checked) store.set('ij_pw',p.password); return {ok:true,msg:j.updated?'已更新後台紀錄':'已登錄後台'}; }
+    if(j.ok){ return {ok:true,msg:j.updated?'已更新後台紀錄':'已登錄後台'}; }
     return {ok:false,msg:j.error||'後台拒絕'};
   }catch(e){ return {ok:false,msg:'連不上後台（'+(e.message||e)+'）'}; }
 }
@@ -512,7 +507,6 @@ $('syncOnly').onclick=async()=>{
   const r=await syncRecord(); status(r.msg+(r.ok?'：'+$('serial').value:''),!r.ok);
   $('syncOnly').disabled=false;
 };
-$('pwRemember').onchange=e=>{ if(!e.target.checked) store.del('ij_pw'); else if($('syncPw').value) store.set('ij_pw',$('syncPw').value); };
 
 $('dlPdf').onclick=async()=>{
   const btn=$('dlPdf'); btn.disabled=true; status('產生 PDF 中…');
@@ -545,7 +539,7 @@ $('dlPdf').onclick=async()=>{
 
 /* ===== 初始化 ===== */
 loadPayer(); refreshPayees();
-if(BACKEND_URL){ $('syncBox').hidden=false; $('syncOnly').hidden=false; const pw=store.get('ij_pw'); if(pw){ $('syncPw').value=pw; $('pwRemember').checked=true; } }
+if(BACKEND_URL){ $('syncBox').hidden=false; $('syncOnly').hidden=false; }
 $('payDate').value=today(); $('serial').value=newSerial();
 render();
 document.fonts && document.fonts.ready.then(fitPreview);
